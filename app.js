@@ -45,6 +45,8 @@ Content-Type: application/rs-metadata+xml
     <jb:recordingid>${srsRecordingId}</jb:recordingid>
     <jb:originationsource>${originator}</jb:originationsource>
     <jb:carrier>${carrier}</jb:carrier>
+    <jb:callednumber>${callingNumber}</jb:callednumber>
+    <jb:callingnumber>${calledNumber}</jb:callingnumber>
   </extensiondata>
   <participant participant_id="${participant1}">
     <nameID aor="${aorFrom}">
@@ -150,7 +152,7 @@ class SrsClient extends Emitter {
     this.siprecToTag = response['to-tag'];
 
     const parsed = transform.parse(response.sdp);
-    parsed.name = 'jambonz SRS';
+    parsed.name = 'jambonz Siprec Client';
     parsed.media[0].label = '1';
     parsed.media[1].label = '2';
     this.sdpOffer = transform.write(parsed);
@@ -199,7 +201,7 @@ class SrsClient extends Emitter {
   }
 
   async stop() {
-    assert(this.activated);
+    if (!this.activated) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
       'from-tag': this.sipRecFromTag
@@ -213,7 +215,7 @@ class SrsClient extends Emitter {
   }
 
   async pause() {
-    assert(!this.paused);
+    if (this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
       'from-tag': this.sipRecFromTag
@@ -230,7 +232,7 @@ class SrsClient extends Emitter {
   }
 
   async resume() {
-    assert(this.paused);
+    if (!this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
       'from-tag': this.sipRecFromTag
