@@ -13,7 +13,8 @@ const createMultipartSdp = (sdp, {
   aorFrom,
   aorTo,
   callingNumber,
-  calledNumber
+  calledNumber,
+  direction
 }) => {
   const sessionId = uuidv4();
   const uuidStream1 = uuidv4();
@@ -40,6 +41,7 @@ Content-Type: application/rs-metadata+xml
   </session>
   <extensiondata xmlns:jb="http://jambonz.org/siprec">
     <jb:callsid>${callSid}</jb:callsid>
+    <jb:direction>${direction}</jb:direction>
     <jb:accountsid>${accountSid}</jb:accountsid>
     <jb:applicationsid>${applicationSid}</jb:applicationsid>
     <jb:recordingid>${srsRecordingId}</jb:recordingid>
@@ -88,6 +90,7 @@ class SrsClient extends Emitter {
     super();
     const {
       srf,
+      direction,
       originalInvite,
       calledNumber,
       callingNumber,
@@ -111,6 +114,7 @@ class SrsClient extends Emitter {
     } = opts;
     this.logger = logger;
     this.srf = srf;
+    this.direction = direction;
     this.originalInvite = originalInvite;
     this.callingNumber = callingNumber;
     this.calledNumber = calledNumber;
@@ -165,7 +169,8 @@ class SrsClient extends Emitter {
       calledNumber: this.calledNumber,
       callingNumber: this.callingNumber,
       aorFrom: this.aorFrom,
-      aorTo: this.aorTo
+      aorTo: this.aorTo,
+      direction: this.direction
     });
 
     this.logger.info({response}, `SrsClient: sending SDP ${sdp}`);
