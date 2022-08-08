@@ -226,8 +226,12 @@ class SrsClient extends Emitter {
       'from-tag': this.sipRecFromTag
     };
     try {
+      const parsed = transform.parse(this.sdpOffer);
+      const version = parseInt(parsed.origin.sessionVersion) + 1;
+      parsed.origin.sessionVersion = version;
+      this.sdpOffer = transform.write(parsed).replace(/sendonly/g, 'inactive');
       await this.blockMedia(opts);
-      await this.uac.modify(this.sdpOffer.replace(/sendonly/g, 'inactive'));
+      await this.uac.modify(this.sdpOffer);
       this.paused = true;
       return true;
     } catch (err) {
@@ -243,6 +247,10 @@ class SrsClient extends Emitter {
       'from-tag': this.sipRecFromTag
     };
     try {
+      const parsed = transform.parse(this.sdpOffer);
+      const version = parseInt(parsed.origin.sessionVersion) + 1;
+      parsed.origin.sessionVersion = version;
+      this.sdpOffer = transform.write(parsed).replace(/inactive/g, 'sendonly');
       await this.blockMedia(opts);
       await this.uac.modify(this.sdpOffer);
     } catch (err) {
