@@ -3,6 +3,24 @@ const assert = require('assert');
 const transform = require('sdp-transform');
 const { v4: uuidv4 } = require('uuid');
 
+const incrementVersion = (version) => {
+  console.log(`started with ${version}`);
+  const arr = [];
+  const str = '' + version;
+  if (str.length > 10) {
+    arr.push(str.slice(0, 10));
+    arr.push(str.slice(10));
+  }
+  else {
+    arr.push(str);
+  }
+  const added = '' + (parseInt(arr.pop()) + 1);
+  arr.push(added);
+  const result = arr.join('');
+  console.log(`ended with ${result}`);
+  return result;
+};
+
 const createMultipartSdp = (sdp, {
   originalInvite,
   srsRecordingId,
@@ -227,8 +245,7 @@ class SrsClient extends Emitter {
     };
     try {
       const parsed = transform.parse(this.sdpOffer);
-      const version = parseInt(parsed.origin.sessionVersion) + 1;
-      parsed.origin.sessionVersion = version;
+      parsed.origin.sessionVersion = incrementVersion(parsed.origin.sessionVersion);
       this.sdpOffer = transform.write(parsed).replace(/sendonly/g, 'inactive');
       await this.blockMedia(opts);
       await this.uac.modify(this.sdpOffer);
@@ -248,8 +265,7 @@ class SrsClient extends Emitter {
     };
     try {
       const parsed = transform.parse(this.sdpOffer);
-      const version = parseInt(parsed.origin.sessionVersion) + 1;
-      parsed.origin.sessionVersion = version;
+      parsed.origin.sessionVersion = incrementVersion(parsed.origin.sessionVersion);
       this.sdpOffer = transform.write(parsed).replace(/inactive/g, 'sendonly');
       await this.blockMedia(opts);
       await this.uac.modify(this.sdpOffer);
