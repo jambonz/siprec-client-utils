@@ -100,7 +100,7 @@ Content-Type: application/rs-metadata+xml
     .replace(/\n/g, '\r\n')
     .replace('--sdp-placeholder--', sdp);
 
-  return `${x}\r\n`;
+  return `${x}\r\n--uniqueBoundary--`;
 };
 
 class SrsClient extends Emitter {
