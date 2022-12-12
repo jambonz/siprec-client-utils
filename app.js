@@ -2,6 +2,11 @@ const Emitter = require('events');
 const assert = require('assert');
 const transform = require('sdp-transform');
 const { v4: uuidv4 } = require('uuid');
+var BoundaryTag="--uniqueBoundary"
+
+if (process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP"){
+   BoundaryTag="--boundary_ac18f3"
+}
 
 const incrementVersion = (version) => {
   console.log(`started with ${version}`);
@@ -34,6 +39,9 @@ const createMultipartSdp = (sdp, {
   calledNumber,
   direction
 }) => {
+  var now = new Date().toISOString();
+  now = now.slice(0,now.length-5);	
+  const groupId = uuidv4();
   const sessionId = uuidv4();
   const uuidStream1 = uuidv4();
   const uuidStream2 = uuidv4();
@@ -42,65 +50,114 @@ const createMultipartSdp = (sdp, {
   const sipSessionId = originalInvite.get('Call-ID');
   const {originator = 'unknown', carrier = 'unknown'} = originalInvite.locals;
 
-  const x = `--uniqueBoundary
-Content-Disposition: session;handling=required
+  var x ;
+
+   
+if (process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP"){
+
+x=`${BoundaryTag}
 Content-Type: application/sdp
 
 --sdp-placeholder--
---uniqueBoundary
+${BoundaryTag}
 Content-Disposition: recording-session
-Content-Type: application/rs-metadata+xml
+Content-Type: application/rs-metadata
 
 <?xml version="1.0" encoding="UTF-8"?>
-<recording xmlns="urn:ietf:params:xml:ns:recording:1">
+<recording xmlns="urn:ietf:params:xml:ns:recording" xmlns:ac="http://AudioCodes">
   <datamode>complete</datamode>
-  <session session_id="${sessionId}">
-    <sipSessionID>${sipSessionId}</sipSessionID>
+  <group id="${groupId}">
+    <associate-time>${now}</associate-time>
+  </group>
+  <session id="${sessionId}">
+    <group-ref>${groupId}</group-ref>
+    <associate-time>${now}</associate-time>
   </session>
-  <extensiondata xmlns:jb="http://jambonz.org/siprec">
-    <jb:callsid>${callSid}</jb:callsid>
-    <jb:direction>${direction}</jb:direction>
-    <jb:accountsid>${accountSid}</jb:accountsid>
-    <jb:applicationsid>${applicationSid}</jb:applicationsid>
-    <jb:recordingid>${srsRecordingId}</jb:recordingid>
-    <jb:originationsource>${originator}</jb:originationsource>
-    <jb:carrier>${carrier}</jb:carrier>
-    <jb:callednumber>${callingNumber}</jb:callednumber>
-    <jb:callingnumber>${calledNumber}</jb:callingnumber>
-  </extensiondata>
-  <participant participant_id="${participant1}">
-    <nameID aor="${aorFrom}">
-      <name>${callingNumber}</name>
-    </nameID>
-  </participant>
-  <participantsessionassoc participant_id="${participant1}" session_id="${sessionId}">
-  </participantsessionassoc>
-  <stream stream_id="${uuidStream1}" session_id="${sessionId}">
-    <label>1</label>
-  </stream>
-  <participant participant_id="${participant2}">
-    <nameID aor="${aorTo}">
-      <name>${calledNumber}</name>
-    </nameID>
-  </participant>
-  <participantsessionassoc participant_id="${participant2}" session_id="${sessionId}">
-  </participantsessionassoc>
-  <stream stream_id="${uuidStream2}" session_id="${sessionId}">
-    <label>2</label>
-  </stream>
-  <participantstreamassoc participant_id="${participant1}">
+  <participant id="${participant1}" session="${sessionId}">
+    <nameID aor="${aorFrom.replace("sip:","")}"></nameID>
+    <associate-time>${now}</associate-time>
     <send>${uuidStream1}</send>
     <recv>${uuidStream2}</recv>
-  </participantstreamassoc>
-  <participantstreamassoc participant_id="${participant2}">
+  </participant>
+  <participant id="${participant2}" session="${sessionId}">
+    <nameID aor="${aorTo.replace("sip:","")}"></nameID>
+    <associate-time>${now}</associate-time>
     <send>${uuidStream2}</send>
     <recv>${uuidStream1}</recv>
-  </participantstreamassoc>
+  </participant>
+  <stream id="${uuidStream1}" session="${sessionId}">
+    <label>1</label>
+  </stream>
+  <stream id="${uuidStream2}" session="${sessionId}">
+    <label>2</label>
+  </stream>
 </recording>`
-    .replace(/\n/g, '\r\n')
-    .replace('--sdp-placeholder--', sdp);
+.replace('--sdp-placeholder--', sdp)
+.replace(/\n/g, '\r\n');
+return `${x}\r\n${BoundaryTag}--`;  
+  }else{
+    x= `${BoundaryTag}
+    Content-Disposition: session;handling=required
+    Content-Type: application/sdp
+    
+    --sdp-placeholder--
+    ${BoundaryTag}
+    Content-Disposition: recording-session
+    Content-Type: application/rs-metadata+xml
+    
+    <?xml version="1.0" encoding="UTF-8"?>
+    <recording xmlns="urn:ietf:params:xml:ns:recording:1">
+      <datamode>complete</datamode>
+      <session session_id="${sessionId}">
+        <sipSessionID>${sipSessionId}</sipSessionID>
+      </session>
+      <extensiondata xmlns:jb="http://jambonz.org/siprec">
+        <jb:callsid>${callSid}</jb:callsid>
+        <jb:direction>${direction}</jb:direction>
+        <jb:accountsid>${accountSid}</jb:accountsid>
+        <jb:applicationsid>${applicationSid}</jb:applicationsid>
+        <jb:recordingid>${srsRecordingId}</jb:recordingid>
+        <jb:originationsource>${originator}</jb:originationsource>
+        <jb:carrier>${carrier}</jb:carrier>
+        <jb:callednumber>${callingNumber}</jb:callednumber>
+        <jb:callingnumber>${calledNumber}</jb:callingnumber>
+      </extensiondata>
+      <participant participant_id="${participant1}">
+        <nameID aor="${aorFrom}">
+          <name>${callingNumber}</name>
+        </nameID>
+      </participant>
+      <participantsessionassoc participant_id="${participant1}" session_id="${sessionId}">
+      </participantsessionassoc>
+      <stream stream_id="${uuidStream1}" session_id="${sessionId}">
+        <label>1</label>
+      </stream>
+      <participant participant_id="${participant2}">
+        <nameID aor="${aorTo}">
+          <name>${calledNumber}</name>
+        </nameID>
+      </participant>
+      <participantsessionassoc participant_id="${participant2}" session_id="${sessionId}">
+      </participantsessionassoc>
+      <stream stream_id="${uuidStream2}" session_id="${sessionId}">
+        <label>2</label>
+      </stream>
+      <participantstreamassoc participant_id="${participant1}">
+        <send>${uuidStream1}</send>
+        <recv>${uuidStream2}</recv>
+      </participantstreamassoc>
+      <participantstreamassoc participant_id="${participant2}">
+        <send>${uuidStream2}</send>
+        <recv>${uuidStream1}</recv>
+      </participantstreamassoc>
+    </recording>`
+        .replace(/\n/g, '\r\n')
+        .replace('--sdp-placeholder--', sdp);
+        return `${x}\r\n${BoundaryTag}--`;
+  }
 
-  return `${x}\r\n--uniqueBoundary--`;
+
+  
 };
 
 class SrsClient extends Emitter {
@@ -177,7 +234,12 @@ class SrsClient extends Emitter {
     parsed.name = 'jambonz Siprec Client';
     parsed.media[0].label = '1';
     parsed.media[1].label = '2';
+
+    console.log("parsed",parsed);
+
     this.sdpOffer = transform.write(parsed);
+    console.log("sdpOffer",this.sdpOffer);
+    
     const sdp = createMultipartSdp(this.sdpOffer, {
       originalInvite: this.originalInvite,
       srsRecordingId: this.srsRecordingId,
@@ -197,7 +259,12 @@ class SrsClient extends Emitter {
     try {
       this.uac = await this.srf.createUAC(this.srsUrl, {
         headers: {
-          'Content-Type': 'multipart/mixed;boundary=uniqueBoundary',
+          'Supported': 'replaces,resource-priority,sdp-anat',
+          'Allow': 'REGISTER,OPTIONS,INVITE,ACK,CANCEL,BYE,NOTIFY,PRACK,REFER,INFO,SUBSCRIBE,UPDATE',
+          'x-audc-call-id' : this.srsRecordingId,
+          'Content-Type': 'multipart/mixed;boundary='+ BoundaryTag.replace('--',''),
+          'Require': 'siprec',
+          
         },
         localSdp: sdp
       });
