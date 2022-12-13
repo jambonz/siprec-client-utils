@@ -2,7 +2,7 @@ const Emitter = require('events');
 const assert = require('assert');
 const transform = require('sdp-transform');
 const { v4: uuidv4 } = require('uuid');
-var BoundaryTag="--uniqueBoundary"
+let BoundaryTag="--uniqueBoundary";
 
 if (process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP"){
    BoundaryTag="--boundary_ac18f3"
@@ -50,12 +50,12 @@ const createMultipartSdp = (sdp, {
   const sipSessionId = originalInvite.get('Call-ID');
   const {originator = 'unknown', carrier = 'unknown'} = originalInvite.locals;
 
-  var x ;
+  
 
    
 if (process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP"){
 
-x=`${BoundaryTag}
+const x=`${BoundaryTag}
 Content-Type: application/sdp
 
 --sdp-placeholder--
@@ -96,7 +96,7 @@ Content-Type: application/rs-metadata
 .replace(/\n/g, '\r\n');
 return `${x}\r\n${BoundaryTag}--`;  
   }else{
-    x= `${BoundaryTag}
+    const x= `${BoundaryTag}
     Content-Disposition: session;handling=required
     Content-Type: application/sdp
     
@@ -261,9 +261,9 @@ class SrsClient extends Emitter {
         headers: {
           'Supported': 'replaces,resource-priority,sdp-anat',
           'Allow': 'REGISTER,OPTIONS,INVITE,ACK,CANCEL,BYE,NOTIFY,PRACK,REFER,INFO,SUBSCRIBE,UPDATE',
-          'x-audc-call-id' : this.srsRecordingId,
           'Content-Type': 'multipart/mixed;boundary='+ BoundaryTag.replace('--',''),
           'Require': 'siprec',
+          ...(process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP") ? {'x-audc-call-id' : this.srsRecordingId}:{}
           
         },
         localSdp: sdp
