@@ -2,10 +2,10 @@ const Emitter = require('events');
 const assert = require('assert');
 const transform = require('sdp-transform');
 const { v4: uuidv4 } = require('uuid');
-let BoundaryTag="--uniqueBoundary";
+let BoundaryTag = '--uniqueBoundary';
 
-if (process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP"){
-   BoundaryTag="--boundary_ac18f3"
+if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
+  BoundaryTag = '--boundary_ac18f3';
 }
 
 const incrementVersion = (version) => {
@@ -40,7 +40,7 @@ const createMultipartSdp = (sdp, {
   direction
 }) => {
   var now = new Date().toISOString();
-  now = now.slice(0,now.length-5);	
+  now = now.slice(0, now.length - 5);
   const groupId = uuidv4();
   const sessionId = uuidv4();
   const uuidStream1 = uuidv4();
@@ -48,14 +48,11 @@ const createMultipartSdp = (sdp, {
   const participant1 = uuidv4();
   const participant2 = uuidv4();
   const sipSessionId = originalInvite.get('Call-ID');
-  const {originator = 'unknown', carrier = 'unknown'} = originalInvite.locals;
+  const { originator = 'unknown', carrier = 'unknown' } = originalInvite.locals;
 
-  
+  if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
 
-   
-if (process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP"){
-
-const x=`${BoundaryTag}
+    const x = `${BoundaryTag}
 Content-Type: application/sdp
 
 --sdp-placeholder--
@@ -74,13 +71,13 @@ Content-Type: application/rs-metadata
     <associate-time>${now}</associate-time>
   </session>
   <participant id="${participant1}" session="${sessionId}">
-    <nameID aor="${aorFrom.replace("sip:","")}"></nameID>
+    <nameID aor="${aorFrom.replace('sip:', '')}"></nameID>
     <associate-time>${now}</associate-time>
     <send>${uuidStream1}</send>
     <recv>${uuidStream2}</recv>
   </participant>
   <participant id="${participant2}" session="${sessionId}">
-    <nameID aor="${aorTo.replace("sip:","")}"></nameID>
+    <nameID aor="${aorTo.replace('sip:', '')}"></nameID>
     <associate-time>${now}</associate-time>
     <send>${uuidStream2}</send>
     <recv>${uuidStream1}</recv>
@@ -92,11 +89,11 @@ Content-Type: application/rs-metadata
     <label>2</label>
   </stream>
 </recording>`
-.replace('--sdp-placeholder--', sdp)
-.replace(/\n/g, '\r\n');
-return `${x}\r\n${BoundaryTag}--`;  
-  }else{
-    const x= `${BoundaryTag}
+      .replace('--sdp-placeholder--', sdp)
+      .replace(/\n/g, '\r\n');
+    return `${x}\r\n${BoundaryTag}--`;
+  } else {
+    const x = `${BoundaryTag}
     Content-Disposition: session;handling=required
     Content-Type: application/sdp
     
@@ -151,13 +148,10 @@ return `${x}\r\n${BoundaryTag}--`;
         <recv>${uuidStream1}</recv>
       </participantstreamassoc>
     </recording>`
-        .replace(/\n/g, '\r\n')
-        .replace('--sdp-placeholder--', sdp);
-        return `${x}\r\n${BoundaryTag}--`;
+      .replace(/\n/g, '\r\n')
+      .replace('--sdp-placeholder--', sdp);
+    return `${x}\r\n${BoundaryTag}--`;
   }
-
-
-  
 };
 
 class SrsClient extends Emitter {
@@ -223,9 +217,9 @@ class SrsClient extends Emitter {
       'from-tag': this.sipRecFromTag
     };
 
-    let response = await this.subscribeRequest({...opts, label: '1', flags: ['all'], interface: 'public'});
+    let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
     if (response.result !== 'ok') {
-      this.logger.error({response, opts}, 'SrsClient:start error calling subscribe request');
+      this.logger.error({ response, opts }, 'SrsClient:start error calling subscribe request');
       throw new Error('error calling subscribe request');
     }
     this.siprecToTag = response['to-tag'];
@@ -234,12 +228,7 @@ class SrsClient extends Emitter {
     parsed.name = 'jambonz Siprec Client';
     parsed.media[0].label = '1';
     parsed.media[1].label = '2';
-
-    console.log("parsed",parsed);
-
     this.sdpOffer = transform.write(parsed);
-    console.log("sdpOffer",this.sdpOffer);
-    
     const sdp = createMultipartSdp(this.sdpOffer, {
       originalInvite: this.originalInvite,
       srsRecordingId: this.srsRecordingId,
@@ -253,7 +242,7 @@ class SrsClient extends Emitter {
       direction: this.direction
     });
 
-    this.logger.info({response}, `SrsClient: sending SDP ${sdp}`);
+    this.logger.info({ response }, `SrsClient: sending SDP ${sdp}`);
 
     /* */
     try {
@@ -261,19 +250,17 @@ class SrsClient extends Emitter {
         headers: {
           'Supported': 'replaces,resource-priority,sdp-anat',
           'Allow': 'REGISTER,OPTIONS,INVITE,ACK,CANCEL,BYE,NOTIFY,PRACK,REFER,INFO,SUBSCRIBE,UPDATE',
-          'Content-Type': 'multipart/mixed;boundary='+ BoundaryTag.replace('--',''),
+          'Content-Type': 'multipart/mixed;boundary=' + BoundaryTag.replace('--', ''),
           'Require': 'siprec',
-          ...(process.env.JAMBONES_SIPREC_TYPE=="SMART_TAP") ? {'x-audc-call-id' : this.srsRecordingId}:{}
-          
-        },
+          ...(process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP' && { 'x-audc-call-id': this.srsRecordingId })},
         localSdp: sdp
       });
     } catch (err) {
-      this.logger.info({err}, `Error sending SIPREC INVITE to ${this.srsUrl}`);
+      this.logger.info({ err }, `Error sending SIPREC INVITE to ${this.srsUrl}`);
       throw err;
     }
 
-    this.logger.info({sdp: this.uac.remote.sdp}, `SrsClient:start - successfully connected to SRS ${this.srsUrl}`);
+    this.logger.info({ sdp: this.uac.remote.sdp }, `SrsClient:start - successfully connected to SRS ${this.srsUrl}`);
     response = await this.subscribeAnswer({
       ...opts,
       sdp: this.uac.remote.sdp,
@@ -281,7 +268,7 @@ class SrsClient extends Emitter {
       label: '2'
     });
     if (response.result !== 'ok') {
-      this.logger.error({response}, 'SrsClient:start error calling subscribe answer');
+      this.logger.error({ response }, 'SrsClient:start error calling subscribe answer');
       throw new Error('error calling subscribe answer');
     }
 
@@ -298,8 +285,8 @@ class SrsClient extends Emitter {
     };
 
     this.del(opts)
-      .catch((err) => this.logger.info({err}, 'Error deleting siprec media session'));
-    this.uac.destroy().catch(() => {});
+      .catch((err) => this.logger.info({ err }, 'Error deleting siprec media session'));
+    this.uac.destroy().catch(() => { });
     this.activated = false;
     return true;
   }
@@ -319,7 +306,7 @@ class SrsClient extends Emitter {
       this.paused = true;
       return true;
     } catch (err) {
-      this.logger.info({err}, 'Error pausing siprec media session');
+      this.logger.info({ err }, 'Error pausing siprec media session');
     }
     return false;
   }
@@ -337,7 +324,7 @@ class SrsClient extends Emitter {
       await this.blockMedia(opts);
       await this.uac.modify(this.sdpOffer);
     } catch (err) {
-      this.logger.info({err}, 'Error resuming siprec media session');
+      this.logger.info({ err }, 'Error resuming siprec media session');
     }
     return true;
   }
