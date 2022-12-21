@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const {
   getBoundaryTag,
   getSipRecSdp
-} = require('./utils')(process.env.JAMBONES_SIPREC_TYPE);
+} = require('./lib/utils')(process.env.JAMBONES_SIPREC_TYPE);
 const boundaryTag = getBoundaryTag();
 
 const incrementVersion = (version) => {
