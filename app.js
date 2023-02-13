@@ -94,60 +94,60 @@ Content-Type: application/rs-metadata
     return `${x}\r\n${BoundaryTag}--`;
   } else {
     const x = `${BoundaryTag}
-    Content-Disposition: session;handling=required
-    Content-Type: application/sdp
-    
-    --sdp-placeholder--
-    ${BoundaryTag}
-    Content-Disposition: recording-session
-    Content-Type: application/rs-metadata+xml
-    
-    <?xml version="1.0" encoding="UTF-8"?>
-    <recording xmlns="urn:ietf:params:xml:ns:recording:1">
-      <datamode>complete</datamode>
-      <session session_id="${sessionId}">
-        <sipSessionID>${sipSessionId}</sipSessionID>
-      </session>
-      <extensiondata xmlns:jb="http://jambonz.org/siprec">
-        <jb:callsid>${callSid}</jb:callsid>
-        <jb:direction>${direction}</jb:direction>
-        <jb:accountsid>${accountSid}</jb:accountsid>
-        <jb:applicationsid>${applicationSid}</jb:applicationsid>
-        <jb:recordingid>${srsRecordingId}</jb:recordingid>
-        <jb:originationsource>${originator}</jb:originationsource>
-        <jb:carrier>${carrier}</jb:carrier>
-        <jb:callednumber>${callingNumber}</jb:callednumber>
-        <jb:callingnumber>${calledNumber}</jb:callingnumber>
-      </extensiondata>
-      <participant participant_id="${participant1}">
-        <nameID aor="${aorFrom}">
-          <name>${callingNumber}</name>
-        </nameID>
-      </participant>
-      <participantsessionassoc participant_id="${participant1}" session_id="${sessionId}">
-      </participantsessionassoc>
-      <stream stream_id="${uuidStream1}" session_id="${sessionId}">
-        <label>1</label>
-      </stream>
-      <participant participant_id="${participant2}">
-        <nameID aor="${aorTo}">
-          <name>${calledNumber}</name>
-        </nameID>
-      </participant>
-      <participantsessionassoc participant_id="${participant2}" session_id="${sessionId}">
-      </participantsessionassoc>
-      <stream stream_id="${uuidStream2}" session_id="${sessionId}">
-        <label>2</label>
-      </stream>
-      <participantstreamassoc participant_id="${participant1}">
-        <send>${uuidStream1}</send>
-        <recv>${uuidStream2}</recv>
-      </participantstreamassoc>
-      <participantstreamassoc participant_id="${participant2}">
-        <send>${uuidStream2}</send>
-        <recv>${uuidStream1}</recv>
-      </participantstreamassoc>
-    </recording>`
+Content-Disposition: session;handling=required
+Content-Type: application/sdp
+
+--sdp-placeholder--
+${BoundaryTag}
+Content-Disposition: recording-session
+Content-Type: application/rs-metadata+xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<recording xmlns="urn:ietf:params:xml:ns:recording:1">
+  <datamode>complete</datamode>
+  <session session_id="${sessionId}">
+    <sipSessionID>${sipSessionId}</sipSessionID>
+  </session>
+  <extensiondata xmlns:jb="http://jambonz.org/siprec">
+    <jb:callsid>${callSid}</jb:callsid>
+    <jb:direction>${direction}</jb:direction>
+    <jb:accountsid>${accountSid}</jb:accountsid>
+    <jb:applicationsid>${applicationSid}</jb:applicationsid>
+    <jb:recordingid>${srsRecordingId}</jb:recordingid>
+    <jb:originationsource>${originator}</jb:originationsource>
+    <jb:carrier>${carrier}</jb:carrier>
+    <jb:callednumber>${callingNumber}</jb:callednumber>
+    <jb:callingnumber>${calledNumber}</jb:callingnumber>
+  </extensiondata>
+  <participant participant_id="${participant1}">
+    <nameID aor="${aorFrom}">
+      <name>${callingNumber}</name>
+    </nameID>
+  </participant>
+  <participantsessionassoc participant_id="${participant1}" session_id="${sessionId}">
+  </participantsessionassoc>
+  <stream stream_id="${uuidStream1}" session_id="${sessionId}">
+    <label>1</label>
+  </stream>
+  <participant participant_id="${participant2}">
+    <nameID aor="${aorTo}">
+      <name>${calledNumber}</name>
+    </nameID>
+  </participant>
+  <participantsessionassoc participant_id="${participant2}" session_id="${sessionId}">
+  </participantsessionassoc>
+  <stream stream_id="${uuidStream2}" session_id="${sessionId}">
+    <label>2</label>
+  </stream>
+  <participantstreamassoc participant_id="${participant1}">
+    <send>${uuidStream1}</send>
+    <recv>${uuidStream2}</recv>
+  </participantstreamassoc>
+  <participantstreamassoc participant_id="${participant2}">
+    <send>${uuidStream2}</send>
+    <recv>${uuidStream1}</recv>
+  </participantstreamassoc>
+</recording>`
       .replace(/\n/g, '\r\n')
       .replace('--sdp-placeholder--', sdp);
     return `${x}\r\n${BoundaryTag}--`;
