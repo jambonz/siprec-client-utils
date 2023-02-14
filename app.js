@@ -307,7 +307,7 @@ class SrsClient extends Emitter {
       this.sdpOffer = transform.write(parsed).replace(/sendonly/g, 'inactive');
       for (const fromTag of this.siprecFromTags) {
         await this.blockMedia({
-          ..opts,
+          ...opts,
           'from-tag': fromTag
         });
       }
@@ -332,7 +332,7 @@ class SrsClient extends Emitter {
       this.sdpOffer = transform.write(parsed).replace(/inactive/g, 'sendonly');
       for (const fromTag of this.siprecFromTags) {
         await this.unblockMedia({
-          ..opts,
+          ...opts,
           'from-tag': fromTag
         });
       }
