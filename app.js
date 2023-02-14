@@ -214,7 +214,10 @@ class SrsClient extends Emitter {
 
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'from-tag': this.sipRecFromTag,
+      'transport protocol': 'RTP/AVP',
+      'ICE': 'remove',
+      'flags': ['allow transcoding']
     };
 
     let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
@@ -222,6 +225,7 @@ class SrsClient extends Emitter {
       this.logger.error({ response, opts }, 'SrsClient:start error calling subscribe request');
       throw new Error('error calling subscribe request');
     }
+    this.siprecFromTags = response['from-tags'];
     this.siprecToTag = response['to-tag'];
 
     const parsed = transform.parse(response.sdp);
@@ -295,13 +299,18 @@ class SrsClient extends Emitter {
     if (this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'all': 'except-offer-answer'
     };
     try {
       const parsed = transform.parse(this.sdpOffer);
       parsed.origin.sessionVersion = incrementVersion(parsed.origin.sessionVersion);
       this.sdpOffer = transform.write(parsed).replace(/sendonly/g, 'inactive');
-      await this.blockMedia(opts);
+      for (const fromTag of this.siprecFromTags) {
+        await this.blockMedia({
+          ...opts,
+          'from-tag': fromTag
+        });
+      }
       await this.uac.modify(this.sdpOffer);
       this.paused = true;
       return true;
@@ -315,13 +324,18 @@ class SrsClient extends Emitter {
     if (!this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'all': 'except-offer-answer'
     };
     try {
       const parsed = transform.parse(this.sdpOffer);
       parsed.origin.sessionVersion = incrementVersion(parsed.origin.sessionVersion);
       this.sdpOffer = transform.write(parsed).replace(/inactive/g, 'sendonly');
-      await this.blockMedia(opts);
+      for (const fromTag of this.siprecFromTags) {
+        await this.unblockMedia({
+          ...opts,
+          'from-tag': fromTag
+        });
+      }
       await this.uac.modify(this.sdpOffer);
     } catch (err) {
       this.logger.info({ err }, 'Error resuming siprec media session');
