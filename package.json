@@ -1,6 +1,6 @@
 {
   "name": "@jambonz/siprec-client-utils",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "utility class for building siprec client functionality",
   "main": "app.js",
   "scripts": {

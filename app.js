@@ -89,8 +89,8 @@ Content-Type: application/rs-metadata
     <label>2</label>
   </stream>
 </recording>`
-      .replace('--sdp-placeholder--', sdp)
-      .replace(/\n/g, '\r\n');
+      .replace(/\n/g, '\r\n')
+      .replace('--sdp-placeholder--', sdp);
     return `${x}\r\n${BoundaryTag}--`;
   } else {
     const x = `${BoundaryTag}
