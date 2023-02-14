@@ -2,11 +2,11 @@ const Emitter = require('events');
 const assert = require('assert');
 const transform = require('sdp-transform');
 const { v4: uuidv4 } = require('uuid');
-const {
-  getBoundaryTag,
-  getSipRecSdp
-} = require('./lib/utils')(process.env.JAMBONES_SIPREC_TYPE);
-const boundaryTag = getBoundaryTag();
+let BoundaryTag = '--uniqueBoundary';
+
+if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
+  BoundaryTag = '--boundary_ac18f3';
+}
 
 const incrementVersion = (version) => {
   console.log(`started with ${version}`);
@@ -32,12 +32,15 @@ const createMultipartSdp = (sdp, {
   callSid,
   accountSid,
   applicationSid,
+  sipCallId,
   aorFrom,
   aorTo,
   callingNumber,
   calledNumber,
   direction
 }) => {
+  var now = new Date().toISOString();
+  now = now.slice(0, now.length - 5);
   const groupId = uuidv4();
   const sessionId = uuidv4();
   const uuidStream1 = uuidv4();
@@ -47,28 +50,108 @@ const createMultipartSdp = (sdp, {
   const sipSessionId = originalInvite.get('Call-ID');
   const { originator = 'unknown', carrier = 'unknown' } = originalInvite.locals;
 
-  return getSipRecSdp({
-    boundaryTag,
-    callSid,
-    direction,
-    accountSid,
-    applicationSid,
-    srsRecordingId,
-    originator,
-    carrier,
-    callingNumber,
-    calledNumber,
-    sipSessionId,
-    sessionId,
-    participant1,
-    participant2,
-    uuidStream1,
-    uuidStream2,
-    aorFrom,
-    aorTo,
-    groupId,
-    sdp
-  });
+  if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
+
+    const x = `${BoundaryTag}
+Content-Type: application/sdp
+
+--sdp-placeholder--
+${BoundaryTag}
+Content-Disposition: recording-session
+Content-Type: application/rs-metadata
+
+<?xml version="1.0" encoding="UTF-8"?>
+<recording xmlns="urn:ietf:params:xml:ns:recording" xmlns:ac="http://AudioCodes">
+  <datamode>complete</datamode>
+  <group id="${groupId}">
+    <associate-time>${now}</associate-time>
+  </group>
+  <session id="${sessionId}">
+    <group-ref>${groupId}</group-ref>
+    <associate-time>${now}</associate-time>
+  </session>
+  <participant id="${participant1}" session="${sessionId}">
+    <nameID aor="${aorFrom.replace('sip:', '')}"></nameID>
+    <associate-time>${now}</associate-time>
+    <send>${uuidStream1}</send>
+    <recv>${uuidStream2}</recv>
+  </participant>
+  <participant id="${participant2}" session="${sessionId}">
+    <nameID aor="${aorTo.replace('sip:', '')}"></nameID>
+    <associate-time>${now}</associate-time>
+    <send>${uuidStream2}</send>
+    <recv>${uuidStream1}</recv>
+  </participant>
+  <stream id="${uuidStream1}" session="${sessionId}">
+    <label>1</label>
+  </stream>
+  <stream id="${uuidStream2}" session="${sessionId}">
+    <label>2</label>
+  </stream>
+</recording>`
+      .replace(/\n/g, '\r\n')
+      .replace('--sdp-placeholder--', sdp);
+    return `${x}\r\n${BoundaryTag}--`;
+  } else {
+    const x = `${BoundaryTag}
+Content-Disposition: session;handling=required
+Content-Type: application/sdp
+
+--sdp-placeholder--
+${BoundaryTag}
+Content-Disposition: recording-session
+Content-Type: application/rs-metadata+xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<recording xmlns="urn:ietf:params:xml:ns:recording:1">
+  <datamode>complete</datamode>
+  <session session_id="${sessionId}">
+    <sipSessionID>${sipSessionId}</sipSessionID>
+  </session>
+  <extensiondata xmlns:jb="http://jambonz.org/siprec">
+    <jb:callsid>${callSid}</jb:callsid>
+    <jb:direction>${direction}</jb:direction>
+    <jb:accountsid>${accountSid}</jb:accountsid>
+    <jb:applicationsid>${applicationSid}</jb:applicationsid>
+    <jb:recordingid>${srsRecordingId}</jb:recordingid>
+    <jb:originationsource>${originator}</jb:originationsource>
+    <jb:carrier>${carrier}</jb:carrier>
+    <jb:callednumber>${callingNumber}</jb:callednumber>
+    <jb:callingnumber>${calledNumber}</jb:callingnumber>
+  </extensiondata>
+  <participant participant_id="${participant1}">
+    <nameID aor="${aorFrom}">
+      <name>${callingNumber}</name>
+    </nameID>
+  </participant>
+  <participantsessionassoc participant_id="${participant1}" session_id="${sessionId}">
+  </participantsessionassoc>
+  <stream stream_id="${uuidStream1}" session_id="${sessionId}">
+    <label>1</label>
+  </stream>
+  <participant participant_id="${participant2}">
+    <nameID aor="${aorTo}">
+      <name>${calledNumber}</name>
+    </nameID>
+  </participant>
+  <participantsessionassoc participant_id="${participant2}" session_id="${sessionId}">
+  </participantsessionassoc>
+  <stream stream_id="${uuidStream2}" session_id="${sessionId}">
+    <label>2</label>
+  </stream>
+  <participantstreamassoc participant_id="${participant1}">
+    <send>${uuidStream1}</send>
+    <recv>${uuidStream2}</recv>
+  </participantstreamassoc>
+  <participantstreamassoc participant_id="${participant2}">
+    <send>${uuidStream2}</send>
+    <recv>${uuidStream1}</recv>
+  </participantstreamassoc>
+</recording>`
+      .replace(/\n/g, '\r\n')
+      .replace('--sdp-placeholder--', sdp);
+    return `${x}\r\n${BoundaryTag}--`;
+  }
 };
 
 class SrsClient extends Emitter {
@@ -131,7 +214,10 @@ class SrsClient extends Emitter {
 
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'from-tag': this.sipRecFromTag,
+      'transport protocol': 'RTP/AVP',
+      'ICE': 'remove',
+      'flags': ['allow transcoding']
     };
 
     let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
@@ -139,6 +225,7 @@ class SrsClient extends Emitter {
       this.logger.error({ response, opts }, 'SrsClient:start error calling subscribe request');
       throw new Error('error calling subscribe request');
     }
+    this.siprecFromTags = response['from-tags'];
     this.siprecToTag = response['to-tag'];
 
     const parsed = transform.parse(response.sdp);
@@ -167,7 +254,7 @@ class SrsClient extends Emitter {
         headers: {
           'Supported': 'replaces,resource-priority,sdp-anat',
           'Allow': 'REGISTER,OPTIONS,INVITE,ACK,CANCEL,BYE,NOTIFY,PRACK,REFER,INFO,SUBSCRIBE,UPDATE',
-          'Content-Type': 'multipart/mixed;boundary=' + boundaryTag.replace('--', ''),
+          'Content-Type': 'multipart/mixed;boundary=' + BoundaryTag.replace('--', ''),
           'Require': 'siprec',
           ...(process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP' && { 'x-audc-call-id': this.srsRecordingId })},
         localSdp: sdp
@@ -212,13 +299,18 @@ class SrsClient extends Emitter {
     if (this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'all': 'except-offer-answer'
     };
     try {
       const parsed = transform.parse(this.sdpOffer);
       parsed.origin.sessionVersion = incrementVersion(parsed.origin.sessionVersion);
       this.sdpOffer = transform.write(parsed).replace(/sendonly/g, 'inactive');
-      await this.blockMedia(opts);
+      for (const fromTag of this.siprecFromTags) {
+        await this.blockMedia({
+          ...opts,
+          'from-tag': fromTag
+        });
+      }
       await this.uac.modify(this.sdpOffer);
       this.paused = true;
       return true;
@@ -232,13 +324,18 @@ class SrsClient extends Emitter {
     if (!this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'all': 'except-offer-answer'
     };
     try {
       const parsed = transform.parse(this.sdpOffer);
       parsed.origin.sessionVersion = incrementVersion(parsed.origin.sessionVersion);
       this.sdpOffer = transform.write(parsed).replace(/inactive/g, 'sendonly');
-      await this.blockMedia(opts);
+      for (const fromTag of this.siprecFromTags) {
+        await this.unblockMedia({
+          ...opts,
+          'from-tag': fromTag
+        });
+      }
       await this.uac.modify(this.sdpOffer);
     } catch (err) {
       this.logger.info({ err }, 'Error resuming siprec media session');
