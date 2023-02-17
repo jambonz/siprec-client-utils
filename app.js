@@ -285,10 +285,11 @@ class SrsClient extends Emitter {
     if (!this.activated) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
-      'from-tag': this.sipRecFromTag
+      'from-tag': this.sipRecFromTag,
+      'to-tag': this.siprecToTag
     };
 
-    this.del(opts)
+    this.unsubscribe(opts)
       .catch((err) => this.logger.info({ err }, 'Error deleting siprec media session'));
     this.uac.destroy().catch(() => { });
     this.activated = false;
