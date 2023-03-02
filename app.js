@@ -338,10 +338,12 @@ class SrsClient extends Emitter {
         });
       }
       await this.uac.modify(this.sdpOffer);
+      this.paused = false;
+      return true;
     } catch (err) {
       this.logger.info({ err }, 'Error resuming siprec media session');
     }
-    return true;
+    return false;
   }
 }
 
