@@ -179,7 +179,8 @@ class SrsClient extends Emitter {
       del,
       blockMedia,
       unblockMedia,
-      unsubscribe
+      unsubscribe,
+      headers
     } = opts;
     this.logger = logger;
     this.srf = srf;
@@ -207,6 +208,7 @@ class SrsClient extends Emitter {
     /* state */
     this.activated = false;
     this.paused = false;
+    this.headers = headers || {};
   }
 
   async start() {
@@ -252,6 +254,7 @@ class SrsClient extends Emitter {
     try {
       this.uac = await this.srf.createUAC(this.srsUrl, {
         headers: {
+          ...this.headers,
           'Supported': 'replaces,resource-priority,sdp-anat',
           'Allow': 'REGISTER,OPTIONS,INVITE,ACK,CANCEL,BYE,NOTIFY,PRACK,REFER,INFO,SUBSCRIBE,UPDATE',
           'Content-Type': 'multipart/mixed;boundary=' + BoundaryTag.replace('--', ''),
