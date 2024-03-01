@@ -316,7 +316,7 @@ class SrsClient extends Emitter {
         });
       }
       await this.uac.modify(this.sdpOffer, {
-        headers: options.headers || {}
+        headers: options?.headers || {}
       });
       this.paused = true;
       return true;
@@ -343,7 +343,7 @@ class SrsClient extends Emitter {
         });
       }
       await this.uac.modify(this.sdpOffer, {
-        headers: options.headers || {}
+        headers: options?.headers || {}
       });
       this.paused = false;
       return true;
