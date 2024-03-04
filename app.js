@@ -299,7 +299,7 @@ class SrsClient extends Emitter {
     return true;
   }
 
-  async pause({options}) {
+  async pause(options) {
     if (this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
@@ -326,7 +326,7 @@ class SrsClient extends Emitter {
     return false;
   }
 
-  async resume({options}) {
+  async resume(options) {
     if (!this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
