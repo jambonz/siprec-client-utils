@@ -299,7 +299,7 @@ class SrsClient extends Emitter {
     return true;
   }
 
-  async pause() {
+  async pause(options) {
     if (this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
@@ -315,7 +315,9 @@ class SrsClient extends Emitter {
           'from-tag': fromTag
         });
       }
-      await this.uac.modify(this.sdpOffer);
+      await this.uac.modify(this.sdpOffer, {
+        headers: options?.headers || {}
+      });
       this.paused = true;
       return true;
     } catch (err) {
@@ -324,7 +326,7 @@ class SrsClient extends Emitter {
     return false;
   }
 
-  async resume() {
+  async resume(options) {
     if (!this.paused) return;
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
@@ -340,7 +342,9 @@ class SrsClient extends Emitter {
           'from-tag': fromTag
         });
       }
-      await this.uac.modify(this.sdpOffer);
+      await this.uac.modify(this.sdpOffer, {
+        headers: options?.headers || {}
+      });
       this.paused = false;
       return true;
     } catch (err) {
