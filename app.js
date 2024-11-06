@@ -219,7 +219,9 @@ class SrsClient extends Emitter {
       'from-tag': this.sipRecFromTag,
       'transport protocol': 'RTP/AVP',
       'ICE': 'remove',
-      'flags': ['allow transcoding']
+      'flags': [
+        ...(process.env.JAMBONES_DISABLE_RTP_ADDRESS_LEARNING ? ['asymmetric'] : []),
+        'allow transcoding']
     };
 
     let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
