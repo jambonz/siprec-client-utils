@@ -213,6 +213,7 @@ class SrsClient extends Emitter {
 
   async start() {
     assert(!this.activated);
+    const codec = this.rtpEngineOpts.common['codec'];
 
     const opts = {
       'call-id': this.rtpEngineOpts.common['call-id'],
@@ -221,7 +222,9 @@ class SrsClient extends Emitter {
       'ICE': 'remove',
       'flags': [
         ...(process.env.JAMBONES_DISABLE_RTP_ADDRESS_LEARNING ? ['asymmetric'] : []),
-        'allow transcoding']
+        'allow transcoding'],
+      // inherit codec flags from application.
+      ...(process.env.JAMBONESE_SIPREC_TRANSCODE_ENABLED && codec && {codec})
     };
 
     let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
