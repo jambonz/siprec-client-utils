@@ -224,7 +224,7 @@ class SrsClient extends Emitter {
         ...(process.env.JAMBONES_DISABLE_RTP_ADDRESS_LEARNING ? ['asymmetric'] : []),
         'allow transcoding'],
       // inherit codec flags from application.
-      ...(process.env.JAMBONESE_SIPREC_TRANCODE_ENABLED && codec && {codec})
+      ...(process.env.JAMBONESE_SIPREC_TRANSCODE_ENABLED && codec && {codec})
     };
 
     let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
