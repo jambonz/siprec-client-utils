@@ -9,14 +9,14 @@ if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
 }
 
 function escapeXml(unsafe) {
-  return unsafe.replace(/[<>&'"]/g, function (c) {
-      switch (c) {
-          case '<': return '&lt;';
-          case '>': return '&gt;';
-          case '&': return '&amp;';
-          case '\'': return '&apos;';
-          case '"': return '&quot;';
-      }
+  return unsafe.replace(/[<>&'"]/g, function(c) {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+    }
   });
 }
 
