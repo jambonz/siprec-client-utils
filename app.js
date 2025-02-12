@@ -180,7 +180,8 @@ class SrsClient extends Emitter {
       blockMedia,
       unblockMedia,
       unsubscribe,
-      headers
+      headers,
+      isSipRecCall,
     } = opts;
     this.logger = logger;
     this.srf = srf;
@@ -204,6 +205,7 @@ class SrsClient extends Emitter {
     this.sipRecFromTag = toTag;
     this.aorFrom = aorFrom;
     this.aorTo = aorTo;
+    this.isSipRecCall = isSipRecCall;
 
     /* state */
     this.activated = false;
@@ -227,7 +229,13 @@ class SrsClient extends Emitter {
       ...(process.env.JAMBONESE_SIPREC_TRANSCODE_ENABLED && codec && {codec})
     };
 
-    let response = await this.subscribeRequest({ ...opts, label: '1', flags: ['all'], interface: 'public' });
+    let response = await this.subscribeRequest(
+      { ...opts,
+        ...(!this.isSipRecCall && {label: '1'}),
+        flags: [...(!this.isSipRecCall ? ['all'] : [])],
+        interface: 'public'
+      }
+    );
     if (response.result !== 'ok') {
       this.logger.error({ response, opts }, 'SrsClient:start error calling subscribe request');
       throw new Error('error calling subscribe request');
