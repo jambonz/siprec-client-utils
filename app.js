@@ -8,6 +8,18 @@ if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
   BoundaryTag = '--boundary_ac18f3';
 }
 
+function escapeXml(unsafe) {
+  return unsafe.replace(/[<>&'"]/g, function(c) {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+    }
+  });
+}
+
 const incrementVersion = (version) => {
   console.log(`started with ${version}`);
   const arr = [];
@@ -115,7 +127,7 @@ Content-Type: application/rs-metadata+xml
     <jb:applicationsid>${applicationSid}</jb:applicationsid>
     <jb:recordingid>${srsRecordingId}</jb:recordingid>
     <jb:originationsource>${originator}</jb:originationsource>
-    <jb:carrier>${carrier}</jb:carrier>
+    <jb:carrier>${escapeXml(carrier)}</jb:carrier>
     <jb:callednumber>${callingNumber}</jb:callednumber>
     <jb:callingnumber>${calledNumber}</jb:callingnumber>
   </extensiondata>
