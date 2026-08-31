@@ -36,7 +36,6 @@ function escapeXml(unsafe) {
 }
 
 const incrementVersion = (version) => {
-  console.log(`started with ${version}`);
   const arr = [];
   const str = '' + version;
   if (str.length > 10) {
@@ -48,9 +47,7 @@ const incrementVersion = (version) => {
   }
   const added = '' + (parseInt(arr.pop()) + 1);
   arr.push(added);
-  const result = arr.join('');
-  console.log(`ended with ${result}`);
-  return result;
+  return arr.join('');
 };
 
 const createMultipartSdp = (sdp, {
@@ -143,8 +140,8 @@ Content-Type: application/rs-metadata+xml
     <jb:recordingid>${escapeXml(srsRecordingId)}</jb:recordingid>
     <jb:originationsource>${escapeXml(originator)}</jb:originationsource>
     <jb:carrier>${escapeXml(carrier)}</jb:carrier>
-    <jb:callednumber>${escapeXml(callingNumber)}</jb:callednumber>
-    <jb:callingnumber>${escapeXml(calledNumber)}</jb:callingnumber>
+    <jb:callednumber>${escapeXml(calledNumber)}</jb:callednumber>
+    <jb:callingnumber>${escapeXml(callingNumber)}</jb:callingnumber>
   </extensiondata>
   <participant participant_id="${participant1}">
     <nameID aor="${escapeXml(aorFrom)}">
