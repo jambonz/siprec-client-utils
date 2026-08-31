@@ -4,7 +4,7 @@
   "description": "utility class for building siprec client functionality",
   "main": "app.js",
   "scripts": {
-    "jslint": "eslint app.js"
+    "jslint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -17,11 +17,15 @@
   "homepage": "https://github.com/jambonz/siprec-client-utils#readme",
   "license": "MIT",
   "dependencies": {
-    "sdp-transform": "^2.14.1",
-    "uuid": "^8.3.2"
+    "sdp-transform": "^2.15.0"
   },
   "devDependencies": {
-    "eslint": "^7.27.0",
-    "eslint-plugin-promise": "^5.1.0"
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "globals": "^17.4.0"
+  },
+  "engines": {
+    "node": ">= 20.0.0"
   }
 }

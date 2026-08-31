@@ -1,27 +1,41 @@
 const Emitter = require('events');
 const assert = require('assert');
 const transform = require('sdp-transform');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 let BoundaryTag = '--uniqueBoundary';
 
 if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
   BoundaryTag = '--boundary_ac18f3';
 }
 
+/**
+ * Sanitize a value for interpolation into the SIPREC rs-metadata XML.
+ *
+ * Most of what goes into that document -- the From/To URIs, the calling and
+ * called numbers, the Call-ID -- is copied verbatim off the inbound INVITE and
+ * is therefore attacker-controlled, so it must never be interpolated raw.
+ *
+ * C0 control characters are stripped first: they are illegal in XML 1.0, and a
+ * bare CR/LF would additionally let a caller forge a MIME boundary in the
+ * multipart body we hand to the SRS.
+ */
 function escapeXml(unsafe) {
-  return unsafe.replace(/[<>&'"]/g, function(c) {
-    switch (c) {
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '&': return '&amp;';
-      case '\'': return '&apos;';
-      case '"': return '&quot;';
-    }
-  });
+  if (unsafe === null || unsafe === undefined) return '';
+  return String(unsafe)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[<>&'"]/g, function(c) {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case '\'': return '&apos;';
+        case '"': return '&quot;';
+      }
+    });
 }
 
 const incrementVersion = (version) => {
-  console.log(`started with ${version}`);
   const arr = [];
   const str = '' + version;
   if (str.length > 10) {
@@ -33,9 +47,7 @@ const incrementVersion = (version) => {
   }
   const added = '' + (parseInt(arr.pop()) + 1);
   arr.push(added);
-  const result = arr.join('');
-  console.log(`ended with ${result}`);
-  return result;
+  return arr.join('');
 };
 
 const createMultipartSdp = (sdp, {
@@ -53,12 +65,12 @@ const createMultipartSdp = (sdp, {
 }) => {
   var now = new Date().toISOString();
   now = now.slice(0, now.length - 5);
-  const groupId = uuidv4();
-  const sessionId = uuidv4();
-  const uuidStream1 = uuidv4();
-  const uuidStream2 = uuidv4();
-  const participant1 = uuidv4();
-  const participant2 = uuidv4();
+  const groupId = randomUUID();
+  const sessionId = randomUUID();
+  const uuidStream1 = randomUUID();
+  const uuidStream2 = randomUUID();
+  const participant1 = randomUUID();
+  const participant2 = randomUUID();
   const sipSessionId = originalInvite.get('Call-ID');
   const { originator = 'unknown', carrier = 'unknown' } = originalInvite.locals;
 
@@ -83,13 +95,13 @@ Content-Type: application/rs-metadata
     <associate-time>${now}</associate-time>
   </session>
   <participant id="${participant1}" session="${sessionId}">
-    <nameID aor="${aorFrom.replace('sip:', '')}"></nameID>
+    <nameID aor="${escapeXml(aorFrom).replace('sip:', '')}"></nameID>
     <associate-time>${now}</associate-time>
     <send>${uuidStream1}</send>
     <recv>${uuidStream2}</recv>
   </participant>
   <participant id="${participant2}" session="${sessionId}">
-    <nameID aor="${aorTo.replace('sip:', '')}"></nameID>
+    <nameID aor="${escapeXml(aorTo).replace('sip:', '')}"></nameID>
     <associate-time>${now}</associate-time>
     <send>${uuidStream2}</send>
     <recv>${uuidStream1}</recv>
@@ -102,7 +114,7 @@ Content-Type: application/rs-metadata
   </stream>
 </recording>`
       .replace(/\n/g, '\r\n')
-      .replace('--sdp-placeholder--', sdp);
+      .replace('--sdp-placeholder--', () => sdp);
     return `${x}\r\n${BoundaryTag}--`;
   } else {
     const x = `${BoundaryTag}
@@ -118,22 +130,22 @@ Content-Type: application/rs-metadata+xml
 <recording xmlns="urn:ietf:params:xml:ns:recording:1">
   <datamode>complete</datamode>
   <session session_id="${sessionId}">
-    <sipSessionID>${sipSessionId}</sipSessionID>
+    <sipSessionID>${escapeXml(sipSessionId)}</sipSessionID>
   </session>
   <extensiondata xmlns:jb="http://jambonz.org/siprec">
-    <jb:callsid>${callSid}</jb:callsid>
-    <jb:direction>${direction}</jb:direction>
-    <jb:accountsid>${accountSid}</jb:accountsid>
-    <jb:applicationsid>${applicationSid}</jb:applicationsid>
-    <jb:recordingid>${srsRecordingId}</jb:recordingid>
-    <jb:originationsource>${originator}</jb:originationsource>
+    <jb:callsid>${escapeXml(callSid)}</jb:callsid>
+    <jb:direction>${escapeXml(direction)}</jb:direction>
+    <jb:accountsid>${escapeXml(accountSid)}</jb:accountsid>
+    <jb:applicationsid>${escapeXml(applicationSid)}</jb:applicationsid>
+    <jb:recordingid>${escapeXml(srsRecordingId)}</jb:recordingid>
+    <jb:originationsource>${escapeXml(originator)}</jb:originationsource>
     <jb:carrier>${escapeXml(carrier)}</jb:carrier>
-    <jb:callednumber>${callingNumber}</jb:callednumber>
-    <jb:callingnumber>${calledNumber}</jb:callingnumber>
+    <jb:callednumber>${escapeXml(calledNumber)}</jb:callednumber>
+    <jb:callingnumber>${escapeXml(callingNumber)}</jb:callingnumber>
   </extensiondata>
   <participant participant_id="${participant1}">
-    <nameID aor="${aorFrom}">
-      <name>${callingNumber}</name>
+    <nameID aor="${escapeXml(aorFrom)}">
+      <name>${escapeXml(callingNumber)}</name>
     </nameID>
   </participant>
   <participantsessionassoc participant_id="${participant1}" session_id="${sessionId}">
@@ -142,8 +154,8 @@ Content-Type: application/rs-metadata+xml
     <label>1</label>
   </stream>
   <participant participant_id="${participant2}">
-    <nameID aor="${aorTo}">
-      <name>${calledNumber}</name>
+    <nameID aor="${escapeXml(aorTo)}">
+      <name>${escapeXml(calledNumber)}</name>
     </nameID>
   </participant>
   <participantsessionassoc participant_id="${participant2}" session_id="${sessionId}">
@@ -161,7 +173,7 @@ Content-Type: application/rs-metadata+xml
   </participantstreamassoc>
 </recording>`
       .replace(/\n/g, '\r\n')
-      .replace('--sdp-placeholder--', sdp);
+      .replace('--sdp-placeholder--', () => sdp);
     return `${x}\r\n${BoundaryTag}--`;
   }
 };
