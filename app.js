@@ -1,7 +1,7 @@
 const Emitter = require('events');
 const assert = require('assert');
 const transform = require('sdp-transform');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 let BoundaryTag = '--uniqueBoundary';
 
 if (process.env.JAMBONES_SIPREC_TYPE == 'SMART_TAP') {
@@ -65,12 +65,12 @@ const createMultipartSdp = (sdp, {
 }) => {
   var now = new Date().toISOString();
   now = now.slice(0, now.length - 5);
-  const groupId = uuidv4();
-  const sessionId = uuidv4();
-  const uuidStream1 = uuidv4();
-  const uuidStream2 = uuidv4();
-  const participant1 = uuidv4();
-  const participant2 = uuidv4();
+  const groupId = randomUUID();
+  const sessionId = randomUUID();
+  const uuidStream1 = randomUUID();
+  const uuidStream2 = randomUUID();
+  const participant1 = randomUUID();
+  const participant2 = randomUUID();
   const sipSessionId = originalInvite.get('Call-ID');
   const { originator = 'unknown', carrier = 'unknown' } = originalInvite.locals;
 
