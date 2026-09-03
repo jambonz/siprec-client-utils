@@ -35,6 +35,14 @@ function escapeXml(unsafe) {
     });
 }
 
+const mediaPorts = (sdp) => {
+  try {
+    return transform.parse(sdp).media.map((m) => m.port).join(',');
+  } catch (err) {
+    return null;
+  }
+};
+
 const incrementVersion = (version) => {
   const arr = [];
   const str = '' + version;
@@ -237,11 +245,9 @@ class SrsClient extends Emitter {
     this.headers = headers || {};
   }
 
-  async start() {
-    assert(!this.activated);
+  _subscribeOpts() {
     const codec = this.rtpEngineOpts.common['codec'];
-
-    const opts = {
+    return {
       'call-id': this.rtpEngineOpts.common['call-id'],
       'from-tag': this.sipRecFromTag,
       'transport protocol': 'RTP/AVP',
@@ -252,6 +258,19 @@ class SrsClient extends Emitter {
       // inherit codec flags from application.
       ...(process.env.JAMBONESE_SIPREC_TRANSCODE_ENABLED && codec && {codec})
     };
+  }
+
+  _labelSubscriberSdp(sdp) {
+    const parsed = transform.parse(sdp);
+    parsed.name = 'jambonz Siprec Client';
+    parsed.media.forEach((m, idx) => m.label = `${idx + 1}`);
+    return transform.write(parsed);
+  }
+
+  async start() {
+    assert(!this.activated);
+
+    const opts = this._subscribeOpts();
 
     let response = await this.subscribeRequest(
       { ...opts,
@@ -267,11 +286,7 @@ class SrsClient extends Emitter {
     this.siprecFromTags = response['from-tags'];
     this.siprecToTag = response['to-tag'];
 
-    const parsed = transform.parse(response.sdp);
-    parsed.name = 'jambonz Siprec Client';
-    parsed.media[0].label = '1';
-    parsed.media[1].label = '2';
-    this.sdpOffer = transform.write(parsed);
+    this.sdpOffer = this._labelSubscriberSdp(response.sdp);
     const sdp = createMultipartSdp(this.sdpOffer, {
       originalInvite: this.originalInvite,
       srsRecordingId: this.srsRecordingId,
@@ -318,6 +333,66 @@ class SrsClient extends Emitter {
 
     this.activated = true;
     this.logger.info('successfully established siprec connection');
+    return true;
+  }
+
+  /**
+   * Rebuild the rtpengine subscription this recording forks from, after the media
+   * it points at has been re-negotiated (a call moved to another feature server).
+   * Passing the existing to-tag makes rtpengine reuse the subscriber it already
+   * has, ports included, so the SRS dialog is normally left untouched.
+   */
+  async resubscribe() {
+    if (!this.activated) return false;
+    const opts = this._subscribeOpts();
+
+    let response = await this.subscribeRequest({
+      ...opts,
+      'to-tag': this.siprecToTag,
+      ...(!this.isSipRecCall && {label: '1'}),
+      flags: [...(!this.isSipRecCall ? ['all'] : [])],
+      interface: 'public'
+    });
+    if (response.result !== 'ok') {
+      this.logger.error({ response, opts }, 'SrsClient:resubscribe error calling subscribe request');
+      return false;
+    }
+    this.siprecFromTags = response['from-tags'];
+
+    /* rtpengine hands back the ports the SRS already knows; if it did not, re-offer */
+    let srsAnswer = this.uac.remote.sdp;
+    const sdpOffer = this._labelSubscriberSdp(response.sdp);
+    if (mediaPorts(sdpOffer) !== mediaPorts(this.sdpOffer)) {
+      this.logger.info('SrsClient:resubscribe - subscriber ports moved, re-inviting the SRS');
+      const parsed = transform.parse(sdpOffer);
+      parsed.origin.sessionVersion = incrementVersion(transform.parse(this.sdpOffer).origin.sessionVersion);
+      this.sdpOffer = transform.write(parsed);
+      srsAnswer = await this.uac.modify(this.sdpOffer) || this.uac.remote.sdp;
+    }
+
+    response = await this.subscribeAnswer({
+      ...opts,
+      sdp: srsAnswer,
+      'to-tag': this.siprecToTag,
+      label: '2'
+    });
+    if (response.result !== 'ok') {
+      this.logger.error({ response }, 'SrsClient:resubscribe error calling subscribe answer');
+      return false;
+    }
+
+    /* a fresh subscription forwards media again, so a paused recording must be re-blocked */
+    if (this.paused) {
+      for (const fromTag of this.siprecFromTags) {
+        await this.blockMedia({
+          'call-id': this.rtpEngineOpts.common['call-id'],
+          'all': 'except-offer-answer',
+          'from-tag': fromTag
+        });
+      }
+    }
+
+    this.logger.info('SrsClient:resubscribe - siprec media subscription re-established');
     return true;
   }
 
